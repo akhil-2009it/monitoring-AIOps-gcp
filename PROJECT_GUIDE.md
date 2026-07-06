@@ -1,6 +1,6 @@
-# CLAUDE.md — AIOps + MLOps + Security Analytics Platform (GCP port)
+# PROJECT_GUIDE.md — AIOps + MLOps + Security Analytics Platform (GCP port)
 
-This file is the primary guide for Claude Code when working in this repository.
+This file is the primary guide for AI coding assistant when working in this repository.
 Read it before touching any code, running any command, or making any suggestion.
 
 ---
@@ -67,7 +67,7 @@ Identical to AWS port. Tiered detectors:
 
 ```
 monitoring-mlops-gcp/
-├── CLAUDE.md
+├── PROJECT_GUIDE.md
 ├── infra/                          ← Terraform (GCP) — root composes modules
 │   ├── main.tf                     ← module orchestration + APIs + outputs
 │   └── modules/

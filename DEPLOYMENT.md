@@ -1,6 +1,6 @@
 # DEPLOYMENT.md — end-to-end deploy walkthrough
 
-Companion to `CLAUDE.md`. Explains **what happens when you run
+Companion to `PROJECT_GUIDE.md`. Explains **what happens when you run
 `scripts/deploy_all.sh` on a fresh GCP project**, why each stage exists, and
 how the pieces glue together at runtime.
 
@@ -9,7 +9,7 @@ how the pieces glue together at runtime.
 ## Why this exists
 
 Reading Terraform + Helm + KFP + gcloud invocations end-to-end is slow. New
-engineers (and Claude) need one page that answers:
+engineers  need one page that answers:
 
 - What resources exist on GCP after deploy?
 - Which stage owns which resource — where do I look when it breaks?
