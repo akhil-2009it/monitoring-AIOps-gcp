@@ -1,0 +1,34 @@
+replicaCount: 2
+
+image:
+  repository: ""    # asia-south1-docker.pkg.dev/<project>/monitoring-mlops/aiops-ui
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  containerPort: 8080
+
+serviceAccount:
+  create: true
+  name: aiops-ui
+  annotations: {}    # iam.gke.io/gcp-service-account: <runner-sa>
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { cpu: 250m, memory: 128Mi }
+
+ingress:
+  enabled: true
+  className: gce
+  staticIpName: aiops-ui-ip
+  cloudArmorPolicy: aiops-scoring-armor
+  host: aiops.example.com
+  tls: false   # set true ONLY when host points to a real DNS A record
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70

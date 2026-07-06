@@ -1,0 +1,36 @@
+# state / creds / caches
+.deploy.env
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# node / misc
+node_modules/
+.DS_Store
+
+# ephemeral outputs
+scratch/
+docs/screenshots/*.orig
+*.log
+
+# large data (keep pipeline JSONs? no — regenerated)
+*_pipeline.json
+features.parquet
+eval.parquet
+dummy.parquet
+dummy.jsonl
+.deploy.env.local
+**/terraform.tfvars

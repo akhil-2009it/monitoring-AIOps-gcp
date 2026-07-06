@@ -1,0 +1,57 @@
+image:
+  repository: asia-south1-docker.pkg.dev/your-project/monitoring-mlops/anomaly-scoring-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+service:
+  port: 80
+  targetPort: 8080
+
+env:
+  GCP_PROJECT_ID: ""
+  GCP_REGION: asia-south1
+  ANOMALY_THRESHOLD: "3.0"
+  OTEL_SERVICE_NAME: anomaly-scoring-api
+  OTEL_EXPORTER_OTLP_ENDPOINT: otel-collector.observability.svc.cluster.local:4317
+  ENDPOINT_RCF_METRICS: ""
+  ENDPOINT_IFOREST_LOGS: ""
+  ENDPOINT_LSTM_AE: ""
+  ENDPOINT_LOG_BERT: ""
+
+serviceAccount:
+  # Workload Identity binding to GCP SA `aiops-runner@<project>.iam.gserviceaccount.com`.
+  name: anomaly-scoring-api
+  annotations:
+    iam.gke.io/gcp-service-account: aiops-runner@your-project.iam.gserviceaccount.com
+
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits:   { cpu: 1,    memory: 1Gi }
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+ingress:
+  enabled: true
+  className: gce
+  staticIpName: aiops-scoring-ip
+  annotations: {}
+  host: aiops.example.com
+  tls: false   # set true ONLY when host points to a real DNS A record
+
+# Cloud Armor policy attached via BackendConfig (created in Terraform).
+backendConfig:
+  enabled: true
+  cloudArmorPolicy: aiops-scoring-armor
+
+# Google Managed Prometheus auto-scrape via PodMonitoring CR.
+podMonitoring:
+  enabled: true
+  port: 8080
+  path: /metrics
+  interval: 30s

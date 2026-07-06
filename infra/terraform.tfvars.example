@@ -1,0 +1,4 @@
+project_id  = "your-gcp-project-id"
+region      = "asia-south1"
+environment = "dev"
+domain      = "aiops.example.com"

@@ -1,0 +1,57 @@
+nameOverride: worker
+isWorker: true
+
+# Workload Identity: bind KSA (default/demo-worker) to the worker GSA.
+serviceAccount:
+  create: true
+  name: demo-worker
+  annotations:
+    iam.gke.io/gcp-service-account: REPLACE_WITH_demo_worker_gsa
+
+image:
+  repository: asia-south1-docker.pkg.dev/your-project/monitoring-mlops/demo-worker
+
+containerPort: 8080  # metrics only
+
+service:
+  enabled: false  # worker has no HTTP traffic, only Prom metrics on a pod port
+
+env:
+  SERVICE_NAME:                "demo-worker"
+  LOG_LEVEL:                   "INFO"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
+  REDIS_URL:                   "redis://10.x.x.x:6379/0"  # Override with private IP from terraform output redis_ip
+  POLL_INTERVAL:               "0.5"
+  DEMO_ERROR_RATE:             "0.05"
+  METRICS_PORT:                "8080"
+
+probes:
+  liveness:  { enabled: false }
+  readiness: { enabled: false }
+
+resources:
+  requests: { cpu: 200m, memory: 384Mi }
+  limits:   { cpu: 1000m, memory: 768Mi }
+
+securityContext:
+  readOnlyRootFilesystem: true
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+podMetricsAnnotations:
+  port: "8080"
+
+# Workers don't autoscale on CPU — scale by queue depth (KEDA), out of scope here
+autoscaling:
+  enabled: false
+
+# PodMonitoring CR scrapes pods directly by label (no Service required).
+# Worker exposes /metrics on METRICS_PORT (8080).
+podMonitoring:
+  enabled: true
+  port: http
+  path: /metrics
+  interval: 30s

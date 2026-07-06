@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |
+    extensions:
+      health_check: {}
+
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          http: { endpoint: 0.0.0.0:4318 }
+
+    processors:
+      batch: { send_batch_size: 1024, timeout: 5s }
+      resourcedetection:
+        detectors: [gcp, env]
+        timeout: 5s
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+
+    exporters:
+      googlecloud:
+        project: {{ required "projectId required" .Values.projectId }}
+        log:
+          default_log_name: otel-logs
+      googlemanagedprometheus:
+        project: {{ .Values.projectId }}
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [googlecloud]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [googlemanagedprometheus]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [googlecloud]

@@ -1,0 +1,14 @@
+{{- if and .Values.backendConfig .Values.backendConfig.enabled -}}
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: {{ include "demo.fullname" . }}-bc
+  labels:
+    {{- include "demo.labels" . | nindent 4 }}
+spec:
+  securityPolicy:
+    name: {{ .Values.backendConfig.cloudArmorPolicy }}
+  healthCheck:
+    type: HTTP
+    requestPath: /healthz
+{{- end -}}

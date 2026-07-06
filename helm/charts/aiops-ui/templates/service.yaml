@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-ui
+  labels: { app.kubernetes.io/name: aiops-ui }
+  annotations:
+    cloud.google.com/backend-config: '{"default":"aiops-ui-bc"}'
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: aiops-ui
+  ports:
+    - { name: http, port: {{ .Values.service.port }}, targetPort: http }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: aiops-ui-bc
+spec:
+  securityPolicy:
+    name: {{ .Values.ingress.cloudArmorPolicy }}
+  healthCheck:
+    type: HTTP
+    requestPath: /healthz
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: aiops-ui
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: aiops-ui
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }} }

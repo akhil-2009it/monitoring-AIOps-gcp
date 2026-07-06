@@ -1,0 +1,52 @@
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.tls }}
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: aiops-scoring-cert
+spec:
+  domains:
+    - {{ .Values.ingress.host }}
+---
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: aiops-fe
+spec:
+  redirectToHttps:
+    enabled: true
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.ingress.staticIpName | default "aiops-scoring-ip" }}
+    {{- if .Values.ingress.tls }}
+    networking.gke.io/managed-certificates: aiops-scoring-cert
+    networking.gke.io/v1beta1.FrontendConfig: aiops-fe
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port: { number: {{ .Values.service.port }} }
+  {{- else }}
+  defaultBackend:
+    service:
+      name: {{ .Release.Name }}
+      port: { number: {{ .Values.service.port }} }
+  {{- end }}
+{{- end }}

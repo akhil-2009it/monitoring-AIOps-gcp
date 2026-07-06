@@ -1,0 +1,36 @@
+# Cold-start streaming detector rules — fire from minute one (no training).
+# Cloud Function consumes the `events` Pub/Sub topic and applies these.
+rules:
+  - name: error_rate_spike
+    metric: rate_5xx
+    type: threshold
+    op: ">"
+    value: 0.05            # 5%
+    severity: HIGH
+
+  - name: distinct_ip_burst
+    metric: distinct_ips
+    type: threshold
+    op: ">"
+    value: 10000
+    severity: HIGH
+
+  - name: latency_z_spike
+    metric: p99_latency
+    type: zscore
+    window_minutes: 30
+    threshold: 4.0
+    severity: MEDIUM
+
+  - name: auth_fail_burst
+    metric: auth_failure_rate
+    type: rate_of_change
+    threshold_pct: 200
+    severity: HIGH
+
+  - name: 4xx_creep
+    metric: rate_4xx
+    type: ewma
+    alpha: 0.3
+    deviation_sigma: 3
+    severity: LOW

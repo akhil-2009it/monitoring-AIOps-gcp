@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aiops-ui
+description: AIOps Anomaly Console — static UI fronting the Scoring API.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

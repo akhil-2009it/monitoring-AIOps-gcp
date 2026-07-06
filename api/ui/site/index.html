@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIOps — Anomaly Console</title>
+  <style>
+    :root { --bg:#0e1117; --panel:#161b22; --fg:#e6edf3; --muted:#8b949e; --hi:#d29922; --hi-h:#f85149; --ok:#3fb950; --br:#30363d; }
+    * { box-sizing: border-box; }
+    body { margin:0; background: var(--bg); color: var(--fg); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--br); display:flex; align-items:center; gap:18px; }
+    header h1 { margin:0; font-size:18px; letter-spacing:0.4px; }
+    header .meta { color: var(--muted); font-size:12px; }
+    main { display:grid; grid-template-columns: 320px 1fr; height: calc(100vh - 58px); }
+    aside { border-right: 1px solid var(--br); padding: 16px; overflow:auto; }
+    aside h2 { font-size:12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 4px 0 10px; }
+    .filter-row { display:flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+    .filter-row label { color: var(--muted); font-size:12px; }
+    .filter-row select, .filter-row input { background: var(--panel); border: 1px solid var(--br); color: var(--fg); padding: 6px 8px; border-radius: 6px; font: inherit; }
+    .stats { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+    .stat { background: var(--panel); border: 1px solid var(--br); padding: 10px; border-radius: 8px; }
+    .stat .n { font-size: 22px; font-weight: 600; }
+    .stat .l { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .sources { display:flex; flex-direction: column; gap: 4px; }
+    .src { display:flex; justify-content: space-between; padding: 6px 8px; border-radius: 6px; font-size: 12px; }
+    .src.ok { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.3); }
+    .src.stale { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3); }
+    section.list { padding: 16px 24px; overflow:auto; }
+    .toolbar { display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+    .toolbar button { background: var(--hi); color: #0e1117; border: 0; padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; }
+    table { width:100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 10px; color: var(--muted); border-bottom: 1px solid var(--br); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+    td { padding: 10px; border-bottom: 1px solid #1f2630; vertical-align: top; }
+    tr:hover { background: #11161e; }
+    .sev { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .sev.HIGH   { background: rgba(248,81,73,0.18);  color: #f85149; }
+    .sev.MEDIUM { background: rgba(210,153,34,0.18); color: #d29922; }
+    .sev.LOW    { background: rgba(63,185,80,0.18);  color: #3fb950; }
+    .score { font-variant-numeric: tabular-nums; color: var(--hi); font-weight: 600; }
+    .ts { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .empty { padding: 40px; text-align:center; color: var(--muted); }
+    .det { color: #79c0ff; }
+    dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--br); border-radius: 12px; padding: 24px; min-width: 480px; }
+    dialog::backdrop { background: rgba(0,0,0,0.6); }
+    dialog h3 { margin: 0 0 12px; }
+    dialog pre { background: #0d1117; padding: 12px; border-radius: 6px; overflow: auto; max-height: 320px; font-size: 12px; }
+    .feedback-row { display:flex; gap: 8px; margin-top: 12px; }
+    .feedback-row button { background: var(--panel); color: var(--fg); border: 1px solid var(--br); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    .feedback-row button.real { border-color: #f85149; color: #f85149; }
+    .feedback-row button.fp   { border-color: #3fb950; color: #3fb950; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>AIOps Anomaly Console</h1>
+  <span class="meta" id="status">connecting…</span>
+</header>
+<main>
+  <aside>
+    <h2>Filters</h2>
+    <div class="filter-row">
+      <label>Source <select id="f-source"><option value="">all</option></select></label>
+      <label>Severity <select id="f-severity">
+        <option value="">all</option>
+        <option>HIGH</option>
+        <option>MEDIUM</option>
+        <option>LOW</option>
+      </select></label>
+      <label>Limit <input id="f-limit" type="number" value="100" min="1" max="1000"/></label>
+    </div>
+    <h2>Last 1h</h2>
+    <div class="stats">
+      <div class="stat"><div class="n" id="s-total">—</div><div class="l">total</div></div>
+      <div class="stat"><div class="n" id="s-high">—</div><div class="l">high</div></div>
+      <div class="stat"><div class="n" id="s-medium">—</div><div class="l">medium</div></div>
+      <div class="stat"><div class="n" id="s-detectors">—</div><div class="l">detectors</div></div>
+    </div>
+    <h2>Source health</h2>
+    <div id="sources" class="sources"><div class="src stale">loading…</div></div>
+  </aside>
+  <section class="list">
+    <div class="toolbar">
+      <div><span id="count">0</span> alerts · auto-refresh <span id="next">10s</span></div>
+      <button id="refresh">Refresh now</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>When</th><th>Detector</th><th>Source</th><th>Host</th><th>Severity</th><th>Score</th><th></th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="7" class="empty">No alerts yet.</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="explain">
+  <h3 id="ex-title">Alert detail</h3>
+  <div id="ex-body"></div>
+  <pre id="ex-json"></pre>
+  <div class="feedback-row">
+    <button class="real" data-label="true_positive">Mark real</button>
+    <button class="fp"   data-label="false_positive">Mark false positive</button>
+    <button id="ex-close" style="margin-left:auto;">Close</button>
+  </div>
+</dialog>
+
+<script>
+const API = "/api/v1";
+let CURRENT = null;
+
+async function fetchAlerts() {
+  const src = document.getElementById('f-source').value;
+  const sev = document.getElementById('f-severity').value;
+  const lim = document.getElementById('f-limit').value;
+  const qs = new URLSearchParams();
+  if (src) qs.set('source', src);
+  if (sev) qs.set('severity', sev);
+  if (lim) qs.set('limit', lim);
+  const r = await fetch(`${API}/alerts?${qs}`);
+  if (!r.ok) throw new Error(r.statusText);
+  return (await r.json()).items || [];
+}
+
+async function fetchSources() {
+  const r = await fetch(`${API}/sources`);
+  if (!r.ok) return [];
+  return (await r.json()).items || [];
+}
+
+function render(alerts) {
+  document.getElementById('count').textContent = alerts.length;
+  const since = Date.now() - 3600 * 1000;
+  const recent = alerts.filter(a => new Date(a.ts).getTime() > since);
+  document.getElementById('s-total').textContent = recent.length;
+  document.getElementById('s-high').textContent = recent.filter(a => a.severity === 'HIGH').length;
+  document.getElementById('s-medium').textContent = recent.filter(a => a.severity === 'MEDIUM').length;
+  document.getElementById('s-detectors').textContent = new Set(recent.map(a => a.detector)).size;
+
+  const tbody = document.getElementById('rows');
+  if (!alerts.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No alerts.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = alerts.map(a => `
+    <tr data-id="${a.id}">
+      <td class="ts">${new Date(a.ts).toISOString().replace('T',' ').slice(0,19)}</td>
+      <td class="det">${a.detector}</td>
+      <td>${a.source}</td>
+      <td>${a.host || '—'}</td>
+      <td><span class="sev ${a.severity}">${a.severity}</span></td>
+      <td class="score">${(+a.score).toFixed(2)}</td>
+      <td><button data-act="explain">Explain</button></td>
+    </tr>`).join('');
+}
+
+function renderSources(items) {
+  const el = document.getElementById('sources');
+  if (!items.length) { el.innerHTML = '<div class="src stale">no data</div>'; return; }
+  el.innerHTML = items.map(s => {
+    const fresh = s.lag_sec < 300;
+    return `<div class="src ${fresh ? 'ok' : 'stale'}"><span>${s.source}</span><span>${s.lag_sec}s</span></div>`;
+  }).join('');
+
+  const sel = document.getElementById('f-source');
+  const have = new Set([...sel.options].map(o => o.value));
+  items.forEach(s => { if (!have.has(s.source)) {
+    const o = document.createElement('option'); o.value = s.source; o.textContent = s.source; sel.appendChild(o);
+  }});
+}
+
+async function refresh() {
+  try {
+    document.getElementById('status').textContent = 'syncing…';
+    const [alerts, sources] = await Promise.all([fetchAlerts(), fetchSources()]);
+    render(alerts);
+    renderSources(sources);
+    document.getElementById('status').textContent = 'live · last sync ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('status').textContent = 'error · ' + e.message;
+  }
+}
+
+document.getElementById('refresh').addEventListener('click', refresh);
+['f-source', 'f-severity', 'f-limit'].forEach(id =>
+  document.getElementById(id).addEventListener('change', refresh));
+
+document.getElementById('rows').addEventListener('click', async (e) => {
+  if (e.target.dataset.act !== 'explain') return;
+  const id = e.target.closest('tr').dataset.id;
+  const r = await fetch(`${API}/alerts/${id}/explain`);
+  if (!r.ok) return alert('failed: ' + r.statusText);
+  const data = await r.json();
+  CURRENT = id;
+  document.getElementById('ex-title').textContent = `${data.alert.detector} · ${data.alert.source}`;
+  document.getElementById('ex-body').innerHTML = `
+    <p><strong>Severity:</strong> ${data.alert.severity} ·
+       <strong>Score:</strong> ${(+data.alert.score).toFixed(2)} ·
+       <strong>Host:</strong> ${data.alert.host || '—'}</p>
+    <p><strong>Top features:</strong></p>
+    <ul>${(data.top_features || []).map(f =>
+      `<li>${f.name} — observed ${f.observed} (baseline ${f.baseline})</li>`).join('') || '<li>—</li>'}</ul>`;
+  document.getElementById('ex-json').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('explain').showModal();
+});
+
+document.getElementById('ex-close').addEventListener('click', () => document.getElementById('explain').close());
+
+document.querySelectorAll('.feedback-row button[data-label]').forEach(b => {
+  b.addEventListener('click', async () => {
+    if (!CURRENT) return;
+    await fetch(`${API}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_id: CURRENT, label: b.dataset.label })
+    });
+    document.getElementById('explain').close();
+    refresh();
+  });
+});
+
+// Auto-refresh + countdown
+let counter = 10;
+setInterval(() => {
+  counter -= 1;
+  if (counter <= 0) { refresh(); counter = 10; }
+  document.getElementById('next').textContent = counter + 's';
+}, 1000);
+
+refresh();
+</script>
+</body>
+</html>

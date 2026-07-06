@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.tls }}
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: aiops-ui-cert
+spec:
+  domains:
+    - {{ .Values.ingress.host }}
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aiops-ui
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: {{ .Values.ingress.staticIpName }}
+    {{- if .Values.ingress.tls }}
+    networking.gke.io/managed-certificates: aiops-ui-cert
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: aiops-ui
+                port: { number: {{ .Values.service.port }} }
+  {{- else }}
+  defaultBackend:
+    service:
+      name: aiops-ui
+      port: { number: {{ .Values.service.port }} }
+  {{- end }}
+{{- end }}

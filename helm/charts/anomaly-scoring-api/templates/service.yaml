@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  {{- if .Values.backendConfig.enabled }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "{{ .Release.Name }}-bc"}'
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector: { app: anomaly-scoring-api }
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      name: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  annotations:
+    {{- toYaml .Values.serviceAccount.annotations | nindent 4 }}
+{{- if .Values.backendConfig.enabled }}
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: {{ .Release.Name }}-bc
+spec:
+  securityPolicy:
+    name: {{ .Values.backendConfig.cloudArmorPolicy }}
+  healthCheck:
+    type: HTTP
+    requestPath: /health
+{{- end }}
+{{- if .Values.podMonitoring.enabled }}
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ .Release.Name }}-pm
+spec:
+  selector:
+    matchLabels: { app: anomaly-scoring-api }
+  endpoints:
+    - port: {{ .Values.podMonitoring.port | quote }}
+      interval: {{ .Values.podMonitoring.interval }}
+      path: {{ .Values.podMonitoring.path }}
+{{- end }}

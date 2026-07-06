@@ -1,0 +1,24 @@
+replicaCount: 2
+namespace: observability
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.99.0"
+  pullPolicy: IfNotPresent
+
+projectId: ""        # required — GCP project for Cloud Trace exporter
+
+serviceAccount:
+  create: true
+  name: otel-collector
+  annotations: {}    # iam.gke.io/gcp-service-account: <runner-sa>
+
+resources:
+  requests: { cpu: 200m, memory: 256Mi }
+  limits:   { cpu: 1000m, memory: 512Mi }
+
+service:
+  type: ClusterIP
+  ports:
+    otlpGrpc: 4317
+    otlpHttp: 4318

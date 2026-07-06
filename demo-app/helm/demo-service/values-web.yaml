@@ -1,0 +1,56 @@
+nameOverride: web
+
+image:
+  repository: asia-south1-docker.pkg.dev/your-project/monitoring-mlops/demo-web
+
+containerPort: 80
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+env:
+  SERVICE_NAME: "demo-web"
+
+probes:
+  liveness:  { path: /healthz }
+  readiness: { path: /healthz }
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { cpu: 250m, memory: 128Mi }
+
+# nginx writes to /var/cache/nginx and /var/run during startup → readOnly off
+securityContext:
+  readOnlyRootFilesystem: false
+
+podSecurityContext:
+  runAsUser: 101    # nginx user
+  runAsGroup: 101
+  fsGroup: 101
+
+# Web is the GCE Ingress-fronted service
+ingress:
+  enabled: true
+  className: gce
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: demo-app-ip
+  hosts:
+    - host: demo.example.com           # override in prod values
+      paths:
+        - path: /*
+          pathType: ImplementationSpecific
+
+# Enable BackendConfig to associate Cloud Armor security policy (created in Terraform)
+backendConfig:
+  enabled: false # Toggle true to enable Cloud Armor association on GKE Service
+  cloudArmorPolicy: aiops-scoring-armor
+
+# nginx doesn't expose /metrics by default. Skip PodMonitoring.
+podMonitoring:
+  enabled: false
+
+podMetricsAnnotations:
+  enabled: false

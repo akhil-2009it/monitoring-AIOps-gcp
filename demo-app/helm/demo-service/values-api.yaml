@@ -1,0 +1,61 @@
+nameOverride: api
+
+# Workload Identity: bind KSA (default/demo-api) to the api GSA created by
+# demo-app/infra. Override `iam.gke.io/gcp-service-account` with the value of
+# `terraform output -raw demo_api_gsa`.
+serviceAccount:
+  create: true
+  name: demo-api
+  annotations:
+    iam.gke.io/gcp-service-account: REPLACE_WITH_demo_api_gsa
+
+image:
+  repository: asia-south1-docker.pkg.dev/your-project/monitoring-mlops/demo-api
+
+containerPort: 8000
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8000
+
+env:
+  SERVICE_NAME:                "demo-api"
+  PORT:                        "8000"
+  LOG_LEVEL:                   "INFO"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
+  DEMO_ERROR_RATE:             "0.02"
+  DEMO_SLOW_RATE:              "0.05"
+  DEMO_SLOW_LATENCY:           "1.5"
+  DB_HOST:                     "10.x.x.x"   # Override with private IP from terraform output mysql_ip
+  DB_PORT:                     "3306"
+  DB_NAME:                     "demoapp"
+  DB_USER:                     "demo"
+
+# DB_PASSWORD lives in a k8s Secret synced from GCP Secret Manager via the CSI
+# driver or External Secrets. Create the Secret with key DB_PASSWORD before
+# helm install, then point existingSecret at it.
+existingSecret: "demo-api-db"
+
+probes:
+  liveness:  { path: /healthz }
+  readiness: { path: /healthz }
+
+resources:
+  requests: { cpu: 200m, memory: 384Mi }
+  limits:   { cpu: 1000m, memory: 768Mi }
+
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 8
+
+securityContext:
+  readOnlyRootFilesystem: true
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+podMetricsAnnotations:
+  port: "8000"
