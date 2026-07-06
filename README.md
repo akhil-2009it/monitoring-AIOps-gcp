@@ -1,4 +1,4 @@
-AIOps + MLOps + Security Analytics Platform (GCP port)
+## AIOps + MLOps + Security Analytics Platform (GCP port)
 
 This file is the primary guide for Claude Code when working in this repository.
 Read it before touching any code, running any command, or making any suggestion.
