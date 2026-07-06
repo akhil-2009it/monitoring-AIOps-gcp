@@ -34,3 +34,4 @@ dummy.parquet
 dummy.jsonl
 .deploy.env.local
 **/terraform.tfvars
+*.docx
